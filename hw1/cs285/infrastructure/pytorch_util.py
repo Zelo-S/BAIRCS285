@@ -50,7 +50,7 @@ def build_mlp(
 
     layers = []
     layers.append(nn.Linear(input_size, size))
-    for i in range(len(n_layers)-1): # skip last layer because its output size is going to be output_size instead
+    for i in range(n_layers-1): # skip last layer because its output size is going to be output_size instead
         layers.append(nn.Linear(size, size))
         layers.append(activation)
 

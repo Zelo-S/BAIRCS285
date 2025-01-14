@@ -6,6 +6,8 @@ from cs285.agents.bc_agent import BCAgent
 from cs285.policies.loaded_gaussian_policy import LoadedGaussianPolicy
 from cs285.infrastructure.utils import MJ_ENV_KWARGS, MJ_ENV_NAMES
 
+# python cs285/scripts/run_hw1.py --expert_policy_file cs285/policies/experts/Ant.pkl --env_name Ant-v4 --exp_name bc_ant --n_iter 1 --expert_data cs285/expert_data/expert_data_Ant-v4.pkl --video_log_freq -1
+
 class BC_Trainer(object):
 
     def __init__(self, params):
@@ -19,7 +21,7 @@ class BC_Trainer(object):
             'size': params['size'],
             'learning_rate': params['learning_rate'],
             'max_replay_buffer_size': params['max_replay_buffer_size'],
-            }
+        }
 
         self.params = params
         self.params['agent_class'] = BCAgent ## HW1: you will modify this

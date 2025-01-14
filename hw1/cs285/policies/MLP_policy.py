@@ -83,11 +83,13 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
         # TODO DONE?: return the action that the policy prescribes
         observation = ptu.from_numpy(observation.astype(np.float32))
+        # print("Pre get_action in network")
         if self.discrete:
             action = self.logits_na(observation)
         elif not self.discrete:
             action = self.mean_net(observation) # action is of dim self.ac_dim
-        raise ptu.to_numpy(action)
+        # print("In get_action", action, "ok then: ", ptu.to_numpy(action))
+        return ptu.to_numpy(action)
 
     # update/train this policy
     # Technically shouldn't be implemented.... ???
@@ -102,11 +104,13 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # through it. For example, you can return a torch.FloatTensor. You can also
     # return more flexible objects, such as a
     # `torch.distributions.Distribution` object. It's up to you!
-    def forward(self, observation: torch.FloatTensor) -> torch.FloatTensor:
+    def forward(self, observation: torch.FloatTensor):
         # normalize it? dunno
-        observation = ptu.to_numpy(observation)
+        # print("At start of forward, obsertation of type", type(observation))
+        # observation = ptu.to_numpy(observation)
         output = self.get_action(observation)
-        assert output.shape == self.ac_dim
+        # print("in forward, output is: ", output)
+        # assert output.shape == self.ac_dim
         return ptu.from_numpy(output) # a 1-way tensor(vector)
 
 #####################################################
@@ -121,12 +125,21 @@ class MLPPolicySL(MLPPolicy):
             self, observations, actions,
             adv_n=None, acs_labels_na=None, qvals=None
     ):
+        # print("Before update success")
         # TODO DONE?: update the policy and return the loss
         predicted_actions = []
         for obs in observations:
             predicted_action = self.forward(obs)
-            predicted_actions.append(predicted_action)
-        predicted_actions = ptu.from_numpy(ptu.to_numpy(predicted_actions))
+            predicted_actions.append(ptu.to_numpy(predicted_action))
+
+        predicted_actions = np.array(predicted_actions)
+        predicted_actions = ptu.from_numpy(predicted_actions)
+        predicted_actions.requires_grad = True
+
+        actions = ptu.from_numpy(np.array(actions))
+        
+        predicted_actions = torch.squeeze(predicted_actions, dim=1)
+        # print(f"Predicted actions shape: {predicted_actions.shape} and actions: {actions.shape}")
 
         loss = self.loss(predicted_actions, actions)
 
