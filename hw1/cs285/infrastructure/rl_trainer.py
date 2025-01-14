@@ -168,10 +168,10 @@ class RL_Trainer(object):
                 # ``` return loaded_paths, 0, None ```
 
                 # (2) collect `self.params['batch_size']` transitions
-        if itr == 0:
-            expert_policy = self.expert_policy
-            loaded_paths = utils.sample_n_trajectories(self.env, expert_policy, batch_size, MAX_VIDEO_LEN)
-            return loaded_paths, 0, None
+        # if itr == 0:
+            # expert_policy = self.expert_policy
+            # loaded_paths = utils.sample_n_trajectories(self.env, expert_policy, batch_size, MAX_VIDEO_LEN)
+            # return loaded_paths, 0, None
         
         # TODO Done?: collect `batch_size` samples to be used for training
         # HINT1: use sample_trajectories from utils
@@ -182,7 +182,6 @@ class RL_Trainer(object):
         # collect more rollouts with the same policy, to be saved as videos in tensorboard
         # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
         train_video_paths = None
-        print(f"Logging video is {self.log_video}")
         if self.log_video:
             print('\nCollecting train rollouts to be used for saving videos...')
             ## TODO Done?: look in utils and implement sample_n_trajectories

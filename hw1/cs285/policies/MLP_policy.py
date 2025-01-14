@@ -60,7 +60,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             )
             self.mean_net.to(ptu.device)
             self.logstd = nn.Parameter(
-                torch.zeros(self.ac_dim, dtype=torch.float32, device=ptu.device)
+                torch.ones(self.ac_dim, dtype=torch.float32, device=ptu.device)
             )
             self.logstd.to(ptu.device)
             self.optimizer = optim.Adam(
@@ -81,15 +81,12 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         else:
             observation = obs[None]
 
-        # TODO DONE?: return the action that the policy prescribes
-        observation = ptu.from_numpy(observation.astype(np.float32))
-        # print("Pre get_action in network")
+        preds = self.forward(ptu.from_numpy(observation))
         if self.discrete:
-            action = self.logits_na(observation)
-        elif not self.discrete:
-            action = self.mean_net(observation) # action is of dim self.ac_dim
-        # print("In get_action", action, "ok then: ", ptu.to_numpy(action))
-        return ptu.to_numpy(action)
+            action = torch.argmax(preds)
+        else:
+            action = preds.rsample()
+        return action
 
     # update/train this policy
     # Technically shouldn't be implemented.... ???
@@ -105,13 +102,10 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # return more flexible objects, such as a
     # `torch.distributions.Distribution` object. It's up to you!
     def forward(self, observation: torch.FloatTensor):
-        # normalize it? dunno
-        # print("At start of forward, obsertation of type", type(observation))
-        # observation = ptu.to_numpy(observation)
-        output = self.get_action(observation)
-        # print("in forward, output is: ", output)
-        # assert output.shape == self.ac_dim
-        return ptu.from_numpy(output) # a 1-way tensor(vector)
+        if self.discrete:
+            return self.logits_na(observation)
+        pred_mean = self.mean_net(observation)
+        return distributions.normal.Normal(pred_mean, torch.e **  self.logstd)
 
 #####################################################
 #####################################################
@@ -125,23 +119,15 @@ class MLPPolicySL(MLPPolicy):
             self, observations, actions,
             adv_n=None, acs_labels_na=None, qvals=None
     ):
-        # print("Before update success")
-        # TODO DONE?: update the policy and return the loss
-        predicted_actions = []
-        for obs in observations:
-            predicted_action = self.forward(obs)
-            predicted_actions.append(ptu.to_numpy(predicted_action))
+        observations = np.asarray(observations)
+        actions = np.asarray(actions)
+        # print("Actions: ", actions, type(actions))
+        actions = ptu.from_numpy(actions)
 
-        predicted_actions = np.array(predicted_actions)
-        predicted_actions = ptu.from_numpy(predicted_actions)
-        predicted_actions.requires_grad = True
-
-        actions = ptu.from_numpy(np.array(actions))
-        
-        predicted_actions = torch.squeeze(predicted_actions, dim=1)
-        # print(f"Predicted actions shape: {predicted_actions.shape} and actions: {actions.shape}")
-
-        loss = self.loss(predicted_actions, actions)
+        pred_action = self.get_action(observations)
+        # print(pred_action, pred_action.size())
+        # pred_action = ptu.from_numpy(pred_action)
+        loss = self.loss(pred_action, actions)
 
         self.optimizer.zero_grad()
         loss.backward()

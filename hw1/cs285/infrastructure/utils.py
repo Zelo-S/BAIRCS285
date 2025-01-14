@@ -1,3 +1,4 @@
+import cs285.infrastructure.pytorch_util as ptu
 import numpy as np
 import time
 
@@ -30,6 +31,8 @@ def sample_trajectory(env, policy, max_path_length, render=False):
         obs.append(ob)
         ac = policy.get_action(obs[-1]) # # HINT: query the policy's get_action function
         ac = ac[0]
+        # print("Type of ac is: ", type(ac))
+        ac = ptu.to_numpy(ac)
         acs.append(ac)
 
         # take that action and record results
@@ -42,7 +45,7 @@ def sample_trajectory(env, policy, max_path_length, render=False):
 
         # TODO DONE?: end the rollout if the rollout ended
         # HINT: rollout can end due to done, or due to max_path_length
-        rollout_done = done or (steps == max_path_length) # HINT: this is either 0 or 1
+        rollout_done = done or (steps >= max_path_length) # HINT: this is either 0 or 1
         terminals.append(rollout_done)
 
         if rollout_done:
