@@ -105,7 +105,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         if self.discrete:
             return self.logits_na(observation)
         pred_mean = self.mean_net(observation)
-        return distributions.normal.Normal(pred_mean, torch.e **  self.logstd)
+        return distributions.normal.Normal(pred_mean, torch.e ** self.logstd)
 
 #####################################################
 #####################################################
