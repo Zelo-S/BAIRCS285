@@ -1,3 +1,4 @@
+from torchvision import transforms
 import abc
 import itertools
 from torch import nn
@@ -86,7 +87,17 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
     # query the policy with observation(s) to get selected action(s)
     def get_action(self, obs: np.ndarray) -> np.ndarray:
-        # TODO: get this from HW1
+        if len(obs.shape) > 1:
+            observation = obs
+        else:
+            observation = obs[None]
+
+        preds = self.forward(ptu.from_numpy(observation))
+        if self.discrete:
+            action = torch.argmax(preds)
+        else:
+            action = preds.rsample()
+        return action
 
     # update/train this policy
     def update(self, observations, actions, **kwargs):
@@ -133,8 +144,14 @@ class MLPPolicyPG(MLPPolicy):
             # sum_{t=0}^{T-1} [grad [log pi(a_t|s_t) * (Q_t - b_t)]]
         # HINT2: you will want to use the `log_prob` method on the distribution returned
             # by the `forward` method
+        
+        # we update theta <- theta + a * grad J(theta)
+        # theta-star = argmax_theta { E[reward] }
 
-        TODO
+        pred_actions = self.forward(observations)
+        # how do you use log_prob?
+        pred = torch.dot(pred_actions.log_prob(), advantages)
+        target = actions 
 
         if self.nn_baseline:
             ## TODO: update the neural network baseline using the q_values as
@@ -143,8 +160,18 @@ class MLPPolicyPG(MLPPolicy):
 
             ## Note: You will need to convert the targets into a tensor using
                 ## ptu.from_numpy before using it in the loss
+            
+            # NOTE: Do i also have to modify pred here???
+            target = ptu.from_numpy(q_values)
+            target_mean = torch.mean(target)
+            target_std = torch.std(target)
+            target = transforms.Normalize(target_mean, target_std)(target)
 
-            TODO
+        loss = self.baseline_loss(pred, target)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
 
         train_log = {
             'Training Loss': ptu.to_numpy(loss),

@@ -154,6 +154,12 @@ class PGAgent(BaseAgent):
 
             Output: list where each index t contains sum_{t'=0}^T gamma^t' r_{t'}
         """
+        T = len(rewards)
+        rewards = np.asarray(rewards)
+        total_sum = np.sum(rewards)
+        discounts = np.array([ self.gamma ** i for i in range(T) ])
+        total_sums = np.array([ total_sum for i in range(T) ])
+        list_of_discounted_returns = np.array([ np.dot(discounts, total_sums) for i in range(T) ])
 
         return list_of_discounted_returns
 
@@ -163,5 +169,12 @@ class PGAgent(BaseAgent):
             -takes a list of rewards {r_0, r_1, ..., r_t', ... r_T},
             -and returns a list where the entry in each index t' is sum_{t'=t}^T gamma^(t'-t) * r_{t'}
         """
-
+        T = len(rewards)
+        rewards = np.asarray(rewards)
+        list_of_discounted_cumsums = np.zeros(T)
+        for t in range(T):
+            len_of_sum = T - t
+            discounts = np.array([ self.gamma ** i for i in range(len_of_sum) ])
+            curr_rew = rewards[t:]
+            list_of_discounted_cumsums[t] = np.dot(discounts, curr_rew)
         return list_of_discounted_cumsums
