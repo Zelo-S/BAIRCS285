@@ -94,7 +94,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
         preds = self.forward(ptu.from_numpy(observation))
         if self.discrete:
-            action = torch.argmax(preds)
+            action = preds.sample()
         else:
             action = preds.rsample()
         return action
@@ -149,9 +149,13 @@ class MLPPolicyPG(MLPPolicy):
         # theta-star = argmax_theta { E[reward] }
 
         pred_actions = self.forward(observations)
-        # how do you use log_prob?
-        pred = torch.dot(pred_actions.log_prob(), advantages)
+        pred = pred_actions.log_prob(actions) * advantages # NOTE: How to use log_prob???
         target = actions 
+        test_tensor = torch.ones_like(actions)
+        loss = self.baseline_loss(pred, target)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
         if self.nn_baseline:
             ## TODO: update the neural network baseline using the q_values as
@@ -162,15 +166,15 @@ class MLPPolicyPG(MLPPolicy):
                 ## ptu.from_numpy before using it in the loss
             
             # NOTE: Do i also have to modify pred here???
-            target = ptu.from_numpy(q_values)
-            target_mean = torch.mean(target)
-            target_std = torch.std(target)
-            target = transforms.Normalize(target_mean, target_std)(target)
-
-        loss = self.baseline_loss(pred, target)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+            # NOTE: ^ yeah thats what run_baseline_prediction is for
+            target_baseline = ptu.from_numpy(q_values)
+            target_baseline = (target_baseline - target_baseline.mean()) / target_baseline.std()
+            pred_baseline = self.run_baseline_prediction(observations)
+            
+            loss = self.loss(pred_baseline, target_baseline)
+            self.baseline_optimizer.zero_grad()
+            loss.backward()
+            self.baseline_optimizer.step()
 
 
         train_log = {

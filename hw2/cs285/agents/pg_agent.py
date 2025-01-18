@@ -43,6 +43,9 @@ class PGAgent(BaseAgent):
         # using helper functions to compute qvals and advantages, and
         # return the train_log obtained from updating the policy
 
+        q_vals = self.calculate_q_vals(rewards_list)
+        advantages = self.estimate_advantage(observations, rewards_list, q_vals, terminals)
+        train_log = self.actor.update(observations, actions, advantages, q_vals)
         return train_log
 
     def calculate_q_vals(self, rewards_list):
@@ -51,7 +54,7 @@ class PGAgent(BaseAgent):
             Monte Carlo estimation of the Q function.
         """
 
-        # TODO: return the estimated qvals based on the given rewards, using
+        # TODO Done?: return the estimated qvals based on the given rewards, using
             # either the full trajectory-based estimator or the reward-to-go
             # estimator
 
@@ -67,16 +70,21 @@ class PGAgent(BaseAgent):
         # Note: q_values should first be a 2D list where the first dimension corresponds to 
         # trajectories and the second corresponds to timesteps, 
         # then flattened to a 1D numpy array.
-
+        q_values = np.array([])
         if not self.reward_to_go:
-            TODO
+            for rewards in rewards_list:
+                rew_list = self._discounted_return(rewards)
+                q_values = np.append(q_values, rew_list)
 
         # Case 2: reward-to-go PG
         # Estimate Q^{pi}(s_t, a_t) by the discounted sum of rewards starting from t
         else:
-            TODO
+            for rewards in rewards_list:
+                rew_list = self._discounted_cumsum(rewards)
+                q_values = np.append(q_values, rew_list)
 
-        return q_values
+        # print("Q val type", q_values.dtype, q_values[0].dtype)
+        return q_values.flatten()
 
     def estimate_advantage(self, obs: np.ndarray, rews_list: np.ndarray, q_values: np.ndarray, terminals: np.ndarray):
 
@@ -91,45 +99,57 @@ class PGAgent(BaseAgent):
             ## ensure that the value predictions and q_values have the same dimensionality
             ## to prevent silent broadcasting errors
             assert values_unnormalized.ndim == q_values.ndim
-            ## TODO: values were trained with standardized q_values, so ensure
+            ## TODO Done?: values were trained with standardized q_values, so ensure
                 ## that the predictions have the same mean and standard deviation as
                 ## the current batch of q_values
-            values = TODO
+            mu = values_unnormalized.mean()
+            sig = values_unnormalized.std()
+            values_standard = (values_unnormalized - mu) / sig
+            values = values_standard * q_values.std() + q_values.mean()
 
             if self.gae_lambda is not None:
                 ## append a dummy T+1 value for simpler recursive calculation
                 values = np.append(values, [0])
 
                 ## combine rews_list into a single array
-                rews = np.concatenate(rews_list)
+                rews = np.concatenate(rews_list) # NOTE: Reduces rews_list down to 1D list
 
                 ## create empty numpy array to populate with GAE advantage
                 ## estimates, with dummy T+1 value for simpler recursive calculation
                 batch_size = obs.shape[0]
-                advantages = np.zeros(batch_size + 1)
+                advantages = np.zeros(batch_size + 1, dtype=np.float32)
 
                 for i in reversed(range(batch_size)):
-                    ## TODO: recursively compute advantage estimates starting from
+                    ## TODO Done?: recursively compute advantage estimates starting from
                         ## timestep T.
                     ## HINT: use terminals to handle edge cases. terminals[i]
                         ## is 1 if the state is the last in its trajectory, and
                         ## 0 otherwise.
+                    advantage_estimate = rews[i] + values[i+1] - values[i]
+                    if terminals[i] == 1: # NOTE: Terminal State means that values[T-1] = 0
+                        advantage_estimate = rews_list[i] - values[i] # NOTE: im assuming rews is same dim as values!
+
+                    advantages[i] = advantage_estimate + self.gamma * self.gae_lambda * advantages[i+1]
 
                 # remove dummy advantage
                 advantages = advantages[:-1]
 
             else:
-                ## TODO: compute advantage estimates using q_values, and values as baselines
-                advantages = TODO
+                ## TODO Done?: compute advantage estimates using q_values, and values as baselines
+                advantages = q_values - values # NOTE: Also assume length of T but it should be right
 
         # Else, just set the advantage to [Q]
         else:
             advantages = q_values.copy()
+            # print("Type:", advantages[0].dtype)
 
         # Normalize the resulting advantages to have a mean of zero
         # and a standard deviation of one
         if self.standardize_advantages:
-            advantages = TODO
+            advantages = (advantages - advantages.mean()) / advantages.std()
+        # print("Dtype:", advantages.dtype, advantages.shape)
+        # for i in range(len(advantages)):
+            # print(advantages[i].dtype)
 
         return advantages
 
@@ -159,8 +179,7 @@ class PGAgent(BaseAgent):
         total_sum = np.sum(rewards)
         discounts = np.array([ self.gamma ** i for i in range(T) ])
         total_sums = np.array([ total_sum for i in range(T) ])
-        list_of_discounted_returns = np.array([ np.dot(discounts, total_sums) for i in range(T) ])
-
+        list_of_discounted_returns = np.dot(discounts, total_sums) * np.ones(T)
         return list_of_discounted_returns
 
     def _discounted_cumsum(self, rewards):
@@ -171,10 +190,12 @@ class PGAgent(BaseAgent):
         """
         T = len(rewards)
         rewards = np.asarray(rewards)
-        list_of_discounted_cumsums = np.zeros(T)
+        list_of_discounted_cumsums = np.zeros(T, dtype=np.float32)
         for t in range(T):
             len_of_sum = T - t
             discounts = np.array([ self.gamma ** i for i in range(len_of_sum) ])
             curr_rew = rewards[t:]
             list_of_discounted_cumsums[t] = np.dot(discounts, curr_rew)
+            # print(list_of_discounted_cumsums[t].dtype)
+        # print("List of disc ret:", list_of_discounted_cumsums.dtype, list_of_discounted_cumsums[0].dtype)
         return list_of_discounted_cumsums
