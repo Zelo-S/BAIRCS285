@@ -127,7 +127,7 @@ class PGAgent(BaseAgent):
                         ## 0 otherwise.
                     advantage_estimate = rews[i] + values[i+1] - values[i]
                     if terminals[i] == 1: # NOTE: Terminal State means that values[T-1] = 0
-                        advantage_estimate = rews_list[i] - values[i] # NOTE: im assuming rews is same dim as values!
+                        advantage_estimate = rews[i] - values[i] # NOTE: im assuming rews is same dim as values!
 
                     advantages[i] = advantage_estimate + self.gamma * self.gae_lambda * advantages[i+1]
 
