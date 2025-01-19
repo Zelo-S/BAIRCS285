@@ -86,18 +86,21 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     ##################################
 
     # query the policy with observation(s) to get selected action(s)
-    def get_action(self, obs: np.ndarray) -> np.ndarray:
+    def get_action(self, obs: torch.Tensor):
+        if isinstance(obs, np.ndarray):
+            obs = ptu.from_numpy(obs)
         if len(obs.shape) > 1:
             observation = obs
         else:
             observation = obs[None]
 
-        preds = self.forward(ptu.from_numpy(observation))
+        # print(f"Observation is typeof:", type(observation), type(observation[0]))
+        distr = self.forward(observation)
         if self.discrete:
-            action = preds.sample()
+            action = distr.sample()
         else:
-            action = preds.rsample()
-        return action
+            action = distr.rsample()
+        return action, distr
 
     # update/train this policy
     def update(self, observations, actions, **kwargs):
@@ -147,12 +150,10 @@ class MLPPolicyPG(MLPPolicy):
         
         # we update theta <- theta + a * grad J(theta)
         # theta-star = argmax_theta { E[reward] }
-
-        pred_actions = self.forward(observations)
-        pred = pred_actions.log_prob(actions) * advantages # NOTE: How to use log_prob???
-        target = actions 
-        test_tensor = torch.ones_like(actions)
-        loss = self.baseline_loss(pred, target)
+        
+        pred_actions, distr = self.get_action(observations)
+        probs = distr.log_prob(actions) # NOTE: How to use log_prob???
+        loss = (-probs * advantages).mean()
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -171,7 +172,7 @@ class MLPPolicyPG(MLPPolicy):
             target_baseline = (target_baseline - target_baseline.mean()) / target_baseline.std()
             pred_baseline = self.run_baseline_prediction(observations)
             
-            loss = self.loss(pred_baseline, target_baseline)
+            loss = self.baseline_loss(pred_baseline, target_baseline)
             self.baseline_optimizer.zero_grad()
             loss.backward()
             self.baseline_optimizer.step()

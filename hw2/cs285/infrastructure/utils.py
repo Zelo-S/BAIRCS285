@@ -74,7 +74,7 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('
 
         # use the most recent ob to decide what to do
         obs.append(ob)
-        ac = policy.get_action(obs[-1]) # # HINT: query the policy's get_action function
+        ac, _ = policy.get_action(obs[-1]) # # HINT: query the policy's get_action function
         ac = ac[0]
         # print("Type of ac is: ", type(ac))
         ac = ptu.to_numpy(ac)
