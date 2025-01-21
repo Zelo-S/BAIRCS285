@@ -141,15 +141,12 @@ class PGAgent(BaseAgent):
         # Else, just set the advantage to [Q]
         else:
             advantages = q_values.copy()
-            # print("Type:", advantages[0].dtype)
 
         # Normalize the resulting advantages to have a mean of zero
         # and a standard deviation of one
         if self.standardize_advantages:
             advantages = (advantages - advantages.mean()) / advantages.std()
-        # print("Dtype:", advantages.dtype, advantages.shape)
-        # for i in range(len(advantages)):
-            # print(advantages[i].dtype)
+
 
         return advantages
 

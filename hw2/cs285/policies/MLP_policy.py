@@ -170,14 +170,14 @@ class MLPPolicyPG(MLPPolicy):
             # NOTE: ^ yeah thats what run_baseline_prediction is for
             target_baseline = ptu.from_numpy(q_values)
             target_baseline = (target_baseline - target_baseline.mean()) / target_baseline.std()
+
             pred_baseline = self.run_baseline_prediction(observations)
             pred_baseline =  ptu.from_numpy(pred_baseline)
             pred_baseline.requires_grad = True
-            # print(f"Pred baseline: {pred_baseline}, {type(pred_baseline)}")
-            # print(f"Target baseline: {target_baseline}, {type(target_baseline)}")
-            loss = self.baseline_loss(pred_baseline, target_baseline)
+
+            baseline_loss = self.baseline_loss(pred_baseline, target_baseline)
             self.baseline_optimizer.zero_grad()
-            loss.backward()
+            baseline_loss.backward()
             self.baseline_optimizer.step()
 
 
