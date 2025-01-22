@@ -38,9 +38,6 @@ class PGAgent(BaseAgent):
             Training a PG agent refers to updating its actor using the given observations/actions
             and the calculated qvals/advantages that come from the seen rewards.
         """
-        obs_temp = np.asarray(observations)
-        nxtobs_temp = np.asarray(next_observations)
-        # print(f"Observations is {obs_temp.shape} and next obs: {nxtobs_temp.shape}")
         # TODO: update the PG actor/policy using the given batch of data 
         # using helper functions to compute qvals and advantages, and
         # return the train_log obtained from updating the policy
