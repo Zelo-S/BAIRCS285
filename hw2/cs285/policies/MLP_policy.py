@@ -166,14 +166,15 @@ class MLPPolicyPG(MLPPolicy):
             ## Note: You will need to convert the targets into a tensor using
                 ## ptu.from_numpy before using it in the loss
             
-            # NOTE: Do i also have to modify pred here???
-            # NOTE: ^ yeah thats what run_baseline_prediction is for
             target_baseline = ptu.from_numpy(q_values)
             target_baseline = (target_baseline - target_baseline.mean()) / target_baseline.std()
 
-            pred_baseline = self.run_baseline_prediction(observations)
-            pred_baseline =  ptu.from_numpy(pred_baseline)
-            pred_baseline.requires_grad = True
+            # pred_baseline = self.run_baseline_prediction(observations)
+            # NOTE: I was doing the above last time but I don't think it was right b/c
+            #       it wasn't training the model, intead it
+            #       just was doing backprop on a random array
+            pred_baseline = self.baseline(observations)
+            pred_baseline = torch.squeeze(pred_baseline)
 
             baseline_loss = self.baseline_loss(pred_baseline, target_baseline)
             self.baseline_optimizer.zero_grad()
@@ -183,6 +184,7 @@ class MLPPolicyPG(MLPPolicy):
 
         train_log = {
             'Training Loss': ptu.to_numpy(loss),
+            'Baseline Learning Loss': baseline_loss
         }
         return train_log
 

@@ -83,6 +83,7 @@ def main():
 
     parser.add_argument('--save_params', action='store_true')
     parser.add_argument('--action_noise_std', type=float, default=0)
+    parser.add_argument('--clogdir', type=str, default="../../data")
 
     args = parser.parse_args()
 
@@ -94,13 +95,16 @@ def main():
     # note that, to avoid confusion, you don't even have a train_batch_size argument anymore (above)
     params['train_batch_size'] = params['batch_size']
 
-##################################
+    ##################################
     ### CREATE DIRECTORY FOR LOGGING
     ##################################
 
     logdir_prefix = 'q2_pg_'  # keep for autograder
 
-    data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../data')
+    logpath = "../../data"
+    if params['clogdir'] != logpath:
+        logpath = params['clogdir']
+    data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), logpath)
 
     if not (os.path.exists(data_path)):
         os.makedirs(data_path)
