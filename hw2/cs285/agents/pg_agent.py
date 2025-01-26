@@ -170,13 +170,13 @@ class PGAgent(BaseAgent):
 
             Output: list where each index t contains sum_{t'=0}^T gamma^t' r_{t'}
         """
+        # NOTE: MAJOR BUG, ACCIDENTALLY COMPUTED SUM BEFORE MULTIPLYING DISCOUNTS!
         T = len(rewards)
         rewards = np.asarray(rewards)
         total_sum = np.sum(rewards)
         discounts = np.array([ self.gamma ** i for i in range(T) ])
-        total_sums = np.array([ total_sum for i in range(T) ])
-        list_of_discounted_returns = np.dot(discounts, total_sums) * np.ones(T)
-        return list_of_discounted_returns
+        total_sum = np.sum(discounts * rewards)
+        return np.repeat(total_sum, T)
 
     def _discounted_cumsum(self, rewards):
         """
@@ -192,6 +192,4 @@ class PGAgent(BaseAgent):
             discounts = np.array([ self.gamma ** i for i in range(len_of_sum) ])
             curr_rew = rewards[t:]
             list_of_discounted_cumsums[t] = np.dot(discounts, curr_rew)
-            # print(list_of_discounted_cumsums[t].dtype)
-        # print("List of disc ret:", list_of_discounted_cumsums.dtype, list_of_discounted_cumsums[0].dtype)
         return list_of_discounted_cumsums

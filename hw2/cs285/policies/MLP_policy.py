@@ -158,6 +158,7 @@ class MLPPolicyPG(MLPPolicy):
         loss.backward()
         self.optimizer.step()
 
+        baseline_loss = 0
         if self.nn_baseline:
             ## TODO: update the neural network baseline using the q_values as
             ## targets. The q_values should first be normalized to have a mean
@@ -180,7 +181,6 @@ class MLPPolicyPG(MLPPolicy):
             self.baseline_optimizer.zero_grad()
             baseline_loss.backward()
             self.baseline_optimizer.step()
-
 
         train_log = {
             'Training Loss': ptu.to_numpy(loss),
